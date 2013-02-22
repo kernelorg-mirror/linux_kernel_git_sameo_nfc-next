@@ -279,4 +279,8 @@ struct sockaddr_nfc_llcp {
 #define NFC_LLCP_REMOTE_LTO	3
 #define NFC_LLCP_REMOTE_RW	4
 
+/* socket option names */
+#define NFC_LLCP_RW   0
+#define NFC_LLCP_MIUX 1
+
 #endif /*__LINUX_NFC_H */
