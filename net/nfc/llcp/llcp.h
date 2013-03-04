@@ -55,6 +55,8 @@ struct nfc_llcp_sdp_tlv {
 	u8 tid;
 	u8 sap;
 
+	unsigned long time;
+
 	struct hlist_node node;
 };
 
@@ -100,6 +102,8 @@ struct nfc_llcp_local {
 
 	struct mutex sdreq_lock;
 	struct hlist_head pending_sdreqs;
+	struct timer_list sdreq_timer;
+	struct work_struct sdreq_timeout_work;
 	u8 sdreq_next_tid;
 
 	/* sockets array */
