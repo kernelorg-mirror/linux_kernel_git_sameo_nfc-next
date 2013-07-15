@@ -69,7 +69,7 @@ static void nfc_llcp_socket_purge(struct nfc_llcp_sock *sock)
 	}
 }
 
-static void nfc_llcp_socket_release(struct nfc_llcp_local *local, bool listen)
+static void nfc_llcp_socket_release(struct nfc_llcp_local *local, bool listen, int err)
 {
 	struct sock *sk;
 	struct hlist_node *node, *tmp;
@@ -101,11 +101,12 @@ static void nfc_llcp_socket_release(struct nfc_llcp_local *local, bool listen)
 
 				nfc_llcp_accept_unlink(accept_sk);
 
+				if (err)
+					accept_sk->sk_err = err;
 				accept_sk->sk_state = LLCP_CLOSED;
+				accept_sk->sk_state_change(sk);
 
 				bh_unlock_sock(accept_sk);
-
-				sock_orphan(accept_sk);
 			}
 
 			if (listen == true) {
@@ -124,11 +125,12 @@ static void nfc_llcp_socket_release(struct nfc_llcp_local *local, bool listen)
 			continue;
 		}
 
+		if (err)
+			sk->sk_err = err;
 		sk->sk_state = LLCP_CLOSED;
+		sk->sk_state_change(sk);
 
 		bh_unlock_sock(sk);
-
-		sock_orphan(sk);
 
 		sk_del_node_init(sk);
 	}
@@ -143,6 +145,17 @@ struct nfc_llcp_local *nfc_llcp_local_get(struct nfc_llcp_local *local)
 	return local;
 }
 
+static void local_cleanup(struct nfc_llcp_local *local)
+{
+	nfc_llcp_socket_release(local, false, ENXIO);
+	cancel_delayed_work_sync(&local->tx_work);
+	del_timer_sync(&local->link_timer);
+	skb_queue_purge(&local->tx_queue);
+	cancel_work_sync(&local->rx_work);
+	cancel_work_sync(&local->timeout_work);
+	kfree_skb(local->rx_pending);
+}
+
 static void local_release(struct kref *ref)
 {
 	struct nfc_llcp_local *local;
@@ -150,13 +163,7 @@ static void local_release(struct kref *ref)
 	local = container_of(ref, struct nfc_llcp_local, ref);
 
 	list_del(&local->list);
-	nfc_llcp_socket_release(local, false);
-	del_timer_sync(&local->link_timer);
-	skb_queue_purge(&local->tx_queue);
-	cancel_work_sync(&local->tx_work);
-	cancel_work_sync(&local->rx_work);
-	cancel_work_sync(&local->timeout_work);
-	kfree_skb(local->rx_pending);
+	local_cleanup(local);
 	kfree(local);
 }
 
@@ -643,7 +650,7 @@ void nfc_llcp_send_to_raw_sock(struct nfc_llcp_local *local,
 static void nfc_llcp_tx_work(struct work_struct *work)
 {
 	struct nfc_llcp_local *local = container_of(work, struct nfc_llcp_local,
-						    tx_work);
+						    tx_work.work);
 	struct sk_buff *skb;
 	struct sock *sk;
 	struct nfc_llcp_sock *llcp_sock;
@@ -1291,7 +1298,7 @@ static void nfc_llcp_rx_work(struct work_struct *work)
 
 	}
 
-	schedule_work(&local->tx_work);
+	schedule_delayed_work(&local->tx_work, msecs_to_jiffies(100));
 	kfree_skb(local->rx_pending);
 	local->rx_pending = NULL;
 }
@@ -1335,7 +1342,7 @@ void nfc_llcp_mac_is_down(struct nfc_dev *dev)
 		return;
 
 	/* Close and purge all existing sockets */
-	nfc_llcp_socket_release(local, true);
+	nfc_llcp_socket_release(local, true, 0);
 }
 
 void nfc_llcp_mac_is_up(struct nfc_dev *dev, u32 target_idx,
@@ -1356,7 +1363,7 @@ void nfc_llcp_mac_is_up(struct nfc_dev *dev, u32 target_idx,
 	if (rf_mode == NFC_RF_INITIATOR) {
 		pr_debug("Queueing Tx work\n");
 
-		schedule_work(&local->tx_work);
+		schedule_delayed_work(&local->tx_work, msecs_to_jiffies(100));
 	} else {
 		mod_timer(&local->link_timer,
 			  jiffies + msecs_to_jiffies(local->remote_lto));
@@ -1380,7 +1387,7 @@ int nfc_llcp_register_device(struct nfc_dev *ndev)
 	local->link_timer.function = nfc_llcp_symm_timer;
 
 	skb_queue_head_init(&local->tx_queue);
-	INIT_WORK(&local->tx_work, nfc_llcp_tx_work);
+	INIT_DELAYED_WORK(&local->tx_work, nfc_llcp_tx_work);
 
 	local->rx_pending = NULL;
 	INIT_WORK(&local->rx_work, nfc_llcp_rx_work);
@@ -1413,6 +1420,8 @@ void nfc_llcp_unregister_device(struct nfc_dev *dev)
 		pr_debug("No such device\n");
 		return;
 	}
+
+	local_cleanup(local);
 
 	nfc_llcp_local_put(local);
 }

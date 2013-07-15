@@ -57,7 +57,7 @@ struct nfc_llcp_local {
 
 	struct timer_list link_timer;
 	struct sk_buff_head tx_queue;
-	struct work_struct	 tx_work;
+	struct delayed_work tx_work;
 	struct work_struct	 rx_work;
 	struct sk_buff *rx_pending;
 	struct work_struct	 timeout_work;
