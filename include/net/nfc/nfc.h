@@ -47,6 +47,9 @@ struct nfc_dev;
 typedef void (*data_exchange_cb_t)(void *context, struct sk_buff *skb,
 								int err);
 
+typedef void (*se_io_cb_t)(void *context, u8 *apdu, size_t apdu_len,
+								int err);
+
 struct nfc_target;
 
 struct nfc_ops {
@@ -73,6 +76,9 @@ struct nfc_ops {
 	int (*discover_se)(struct nfc_dev *dev);
 	int (*enable_se)(struct nfc_dev *dev, u32 se_idx);
 	int (*disable_se)(struct nfc_dev *dev, u32 se_idx);
+	int (*se_io) (struct nfc_dev *dev, u32 se_idx,
+		      u8 *apdu, size_t apdu_length,
+		      se_io_cb_t cb, void *cb_context);
 };
 
 #define NFC_TARGET_IDX_ANY -1
