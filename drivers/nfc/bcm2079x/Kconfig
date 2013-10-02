@@ -1,0 +1,23 @@
+config NFC_BCM2079X
+	tristate "Broadcom BCM2079x NFC driver"
+	depends on NFC_NCI
+	default n
+	---help---
+	  This module contains the main code for Broadcom BCM2079x
+	  NFC chipsets. It implements the chipset NCI logic and hooks into
+	  the NFC kernel APIs. Physical layers will register against it.
+
+	  To compile this driver as a module, choose m here. The module will
+	  be called bcm2079x.
+	  Say N if unsure.
+
+config NFC_BCM2079X_SPI
+	tristate "NFC Broadcom BCM2079x SPI support"
+	depends on NFC_BCM2079X && NFC_NCI_SPI
+	---help---
+	  This module adds support for the SPI interface of adapters using
+	  Broadcom BCM2079x.  Select this if your BCM2079x chipset
+	  is connected to a SPI physical Interface on your platform.
+
+	  If you choose to build a module, it'll be called bcm2079x_spi.
+	  Say N if unsure.
