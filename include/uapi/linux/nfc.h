@@ -118,6 +118,7 @@ enum nfc_commands {
  * @NFC_ATTR_LLC_PARAM_RW: Receive Window size parameter
  * @NFC_ATTR_LLC_PARAM_MIUX: MIU eXtension parameter
  * @NFC_ATTR_FIRMWARE_NAME: Free format firmware version
+ * @NFC_ATTR_FIRMWARE_DOWNLOAD_STATUS: Firmware download operation status
  */
 enum nfc_attrs {
 	NFC_ATTR_UNSPEC,
@@ -139,6 +140,7 @@ enum nfc_attrs {
 	NFC_ATTR_LLC_PARAM_RW,
 	NFC_ATTR_LLC_PARAM_MIUX,
 	NFC_ATTR_FIRMWARE_NAME,
+	NFC_ATTR_FIRMWARE_DOWNLOAD_STATUS,
 /* private: internal use only */
 	__NFC_ATTR_AFTER_LAST
 };
