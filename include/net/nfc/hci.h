@@ -59,6 +59,7 @@ struct nfc_hci_ops {
 			      struct nfc_target *target);
 	int (*event_received)(struct nfc_hci_dev *hdev, u8 gate, u8 event,
 			      struct sk_buff *skb);
+	int (*fw_upload)(struct nfc_hci_dev *hdev, const char *firmware_name);
 };
 
 /* Pipes */
