@@ -67,6 +67,8 @@
  *	subsequent CONNECT and CC messages.
  *	If one of the passed parameters is wrong none is set and -EINVAL is
  *	returned.
+ * @NFC_CMD_FW_UPLOAD: Request to Load/flash firmware, or event to inform that
+ *	some firmware was loaded
  */
 enum nfc_commands {
 	NFC_CMD_UNSPEC,
@@ -86,6 +88,7 @@ enum nfc_commands {
 	NFC_EVENT_TM_DEACTIVATED,
 	NFC_CMD_LLC_GET_PARAMS,
 	NFC_CMD_LLC_SET_PARAMS,
+	NFC_CMD_FW_UPLOAD,
 /* private: internal use only */
 	__NFC_CMD_AFTER_LAST
 };
@@ -114,6 +117,7 @@ enum nfc_commands {
  * @NFC_ATTR_LLC_PARAM_LTO: Link TimeOut parameter
  * @NFC_ATTR_LLC_PARAM_RW: Receive Window size parameter
  * @NFC_ATTR_LLC_PARAM_MIUX: MIU eXtension parameter
+ * @NFC_ATTR_FIRMWARE_NAME: Free format firmware version
  */
 enum nfc_attrs {
 	NFC_ATTR_UNSPEC,
@@ -134,6 +138,7 @@ enum nfc_attrs {
 	NFC_ATTR_LLC_PARAM_LTO,
 	NFC_ATTR_LLC_PARAM_RW,
 	NFC_ATTR_LLC_PARAM_MIUX,
+	NFC_ATTR_FIRMWARE_NAME,
 /* private: internal use only */
 	__NFC_ATTR_AFTER_LAST
 };
@@ -146,6 +151,7 @@ enum nfc_attrs {
 #define NFC_SENSB_RES_MAXSIZE 12
 #define NFC_SENSF_RES_MAXSIZE 18
 #define NFC_GB_MAXSIZE        48
+#define NFC_FIRMWARE_NAME_MAXSIZE 32
 
 /* NFC protocols */
 #define NFC_PROTO_JEWEL		1

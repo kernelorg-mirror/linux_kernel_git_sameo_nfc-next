@@ -68,6 +68,7 @@ struct nfc_ops {
 			     void *cb_context);
 	int (*tm_send)(struct nfc_dev *dev, struct sk_buff *skb);
 	int (*check_presence)(struct nfc_dev *dev, struct nfc_target *target);
+	int (*fw_upload)(struct nfc_dev *dev, const char *firmware_name);
 };
 
 #define NFC_TARGET_IDX_ANY -1
@@ -104,6 +105,7 @@ struct nfc_dev {
 	int targets_generation;
 	struct device dev;
 	bool dev_up;
+	bool fw_upload_in_progress;
 	u8 rf_mode;
 	bool polling;
 	struct nfc_target *active_target;
