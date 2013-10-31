@@ -67,8 +67,8 @@
  *	subsequent CONNECT and CC messages.
  *	If one of the passed parameters is wrong none is set and -EINVAL is
  *	returned.
- * @NFC_CMD_FW_UPLOAD: Request to Load/flash firmware, or event to inform that
- *	some firmware was loaded
+ * @NFC_CMD_FW_DOWNLOAD: Request to Load/flash firmware, or event to inform
+ *	that some firmware was loaded
  */
 enum nfc_commands {
 	NFC_CMD_UNSPEC,
@@ -88,7 +88,7 @@ enum nfc_commands {
 	NFC_EVENT_TM_DEACTIVATED,
 	NFC_CMD_LLC_GET_PARAMS,
 	NFC_CMD_LLC_SET_PARAMS,
-	NFC_CMD_FW_UPLOAD,
+	NFC_CMD_FW_DOWNLOAD,
 /* private: internal use only */
 	__NFC_CMD_AFTER_LAST
 };
