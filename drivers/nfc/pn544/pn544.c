@@ -789,7 +789,7 @@ static int pn544_hci_fw_download(struct nfc_hci_dev *hdev,
 	if (info->fw_download == NULL)
 		return -ENOTSUPP;
 
-	return info->fw_download(info->phy_id, firmware_name);
+	return info->fw_download(info->phy_id, firmware_name, hdev->hw_version);
 }
 
 static struct nfc_hci_ops pn544_hci_ops = {
