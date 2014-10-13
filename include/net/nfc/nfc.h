@@ -138,6 +138,12 @@ struct nfc_genl_data {
 	struct mutex genl_data_mutex;
 };
 
+struct nfc_vendor_cmd {
+	__u32 vendor_id;
+	__u32 subcmd;
+	int (*cmd) (struct nfc_dev *dev, void *data, size_t data_len);
+};
+
 struct nfc_dev {
 	int idx;
 	u32 target_next_idx;
@@ -165,6 +171,9 @@ struct nfc_dev {
 	bool shutting_down;
 
 	struct rfkill *rfkill;
+
+	struct nfc_vendor_cmd *vendor_cmds;
+	int n_vendor_cmds;
 
 	struct nfc_ops *ops;
 };
@@ -266,5 +275,18 @@ struct nfc_se *nfc_find_se(struct nfc_dev *dev, u32 se_idx);
 
 void nfc_send_to_raw_sock(struct nfc_dev *dev, struct sk_buff *skb,
 			  u8 payload_type, u8 direction);
+
+static inline int nfc_set_vendor_cmds(struct nfc_dev *dev,
+				      struct nfc_vendor_cmd *cmds,
+				      int n_cmds)
+{
+	if (dev->vendor_cmds || dev->n_vendor_cmds)
+		return -EINVAL;
+
+	dev->vendor_cmds = cmds;
+	dev->n_vendor_cmds = n_cmds;
+
+	return 0;
+}
 
 #endif /* __NET_NFC_H */
