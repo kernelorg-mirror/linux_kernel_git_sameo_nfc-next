@@ -1370,6 +1370,50 @@ static int nfc_genl_se_io(struct sk_buff *skb, struct genl_info *info)
 	return dev->ops->se_io(dev, se_idx, apdu, apdu_len, se_io_cb, ctx);
 }
 
+static int nfc_genl_vendor_cmd(struct sk_buff *skb,
+			       struct genl_info *info)
+{
+	struct nfc_dev *dev;
+	struct nfc_vendor_cmd *cmd;
+	u32 dev_idx, vid, subcmd;
+	u8 *data;
+	size_t data_len;
+	int i;
+
+	if (!info->attrs[NFC_ATTR_DEVICE_INDEX] ||
+	    !info->attrs[NFC_ATTR_VENDOR_ID] ||
+	    !info->attrs[NFC_ATTR_VENDOR_SUBCMD])
+		return -EINVAL;
+
+	dev_idx = nla_get_u32(info->attrs[NFC_ATTR_DEVICE_INDEX]);
+	vid = nla_get_u32(info->attrs[NFC_ATTR_VENDOR_ID]);
+	subcmd = nla_get_u32(info->attrs[NFC_ATTR_VENDOR_SUBCMD]);
+
+	dev = nfc_get_device(dev_idx);
+	if (!dev || !dev->vendor_cmds || !dev->n_vendor_cmds)
+		return -ENODEV;
+
+	data = nla_data(info->attrs[NFC_ATTR_VENDOR_DATA]);
+	if (data) {
+		data_len = nla_len(info->attrs[NFC_ATTR_VENDOR_DATA]);
+		if (data_len == 0)
+			return -EINVAL;
+	} else {
+		data_len = 0;
+	}
+
+	for (i = 0; i < dev->n_vendor_cmds; i++) {
+		cmd = &dev->vendor_cmds[i];
+
+		if (cmd->vendor_id != vid || cmd->subcmd != subcmd)
+			continue;
+
+		return cmd->cmd(dev, data, data_len);
+	}
+
+	return -EOPNOTSUPP;
+}
+
 static const struct genl_ops nfc_genl_ops[] = {
 	{
 		.cmd = NFC_CMD_GET_DEVICE,
@@ -1453,6 +1497,11 @@ static const struct genl_ops nfc_genl_ops[] = {
 	{
 		.cmd = NFC_CMD_SE_IO,
 		.doit = nfc_genl_se_io,
+		.policy = nfc_genl_policy,
+	},
+	{
+		.cmd = NFC_CMD_VENDOR,
+		.doit = nfc_genl_vendor_cmd,
 		.policy = nfc_genl_policy,
 	},
 };
