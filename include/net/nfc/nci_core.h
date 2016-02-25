@@ -33,6 +33,8 @@
 #include <linux/skbuff.h>
 #include <linux/tty.h>
 
+#include <net/sock.h>
+
 #include <net/nfc/nfc.h>
 #include <net/nfc/nci.h>
 
@@ -471,5 +473,16 @@ struct nci_uart {
 int nci_uart_register(struct nci_uart *nu);
 void nci_uart_unregister(struct nci_uart *nu);
 void nci_uart_set_config(struct nci_uart *nu, int baudrate, int flow_ctrl);
+
+struct nfc_nci_sock {
+        struct sock sk;
+        struct nfc_dev *dev;
+};
+
+enum nci_sock_state {
+        NCI_CONNECTED = 1, /* wait_for_packet() wants that */
+        NCI_CLOSED,
+        NCI_BOUND,
+};
 
 #endif /* __NCI_CORE_H */

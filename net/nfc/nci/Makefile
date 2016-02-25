@@ -4,7 +4,7 @@
 
 obj-$(CONFIG_NFC_NCI) += nci.o
 
-nci-objs := core.o data.o lib.o ntf.o rsp.o hci.o
+nci-objs := core.o data.o lib.o ntf.o rsp.o hci.o sock.o
 
 nci_spi-y += spi.o
 obj-$(CONFIG_NFC_NCI_SPI) += nci_spi.o

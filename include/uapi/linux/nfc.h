@@ -282,7 +282,8 @@ struct sockaddr_nfc_llcp {
 /* NFC socket protocols */
 #define NFC_SOCKPROTO_RAW	0
 #define NFC_SOCKPROTO_LLCP	1
-#define NFC_SOCKPROTO_MAX	2
+#define NFC_SOCKPROTO_NCI	2
+#define NFC_SOCKPROTO_MAX	3
 
 #define NFC_HEADER_SIZE 1
 
