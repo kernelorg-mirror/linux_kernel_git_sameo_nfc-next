@@ -19,13 +19,14 @@
 #include <linux/init.h>
 #include <linux/kernel.h>
 #include <linux/module.h>
+#include <linux/rfkill.h>
 #include <linux/nfc.h>
 
 #include "../nfc.h"
 #include <net/nfc/nfc.h>
 #include <net/nfc/nci_core.h>
 
-//#include "nfc.h"
+#define nfc_nci_sock(sk) ((struct nfc_nci_sock *) (sk))
 
 static struct nfc_sock_list nci_sk_list = {
 	.lock = __RW_LOCK_UNLOCKED(nci_sk_list.lock)
@@ -46,9 +47,66 @@ static void nci_sock_unlink(struct nfc_sock_list *l, struct sock *sk)
 	write_unlock(&l->lock);
 }
 
+static int nci_sock_close(struct nfc_dev *dev)
+{
+	struct nci_dev *ndev = nfc_get_drvdata(dev);
+
+	if (!test_and_clear_bit(NCI_UP, &ndev->flags))
+		return 0;
+
+	ndev->ops->close(ndev);
+
+	/* Clear flags */
+	ndev->flags = 0;
+
+	return 0;
+}
+
+static int nci_sock_open(struct nfc_dev *dev)
+{
+	struct nci_dev *ndev = nfc_get_drvdata(dev);
+	int rc = 0;
+
+	device_lock(&dev->dev);
+
+	if (dev->rfkill && rfkill_blocked(dev->rfkill)) {
+		rc = -ERFKILL;
+		goto error;
+	}
+
+	if (!device_is_registered(&dev->dev)) {
+		rc = -ENODEV;
+		goto error;
+	}
+
+	if (test_bit(NCI_UP, &ndev->flags)) {
+		rc = -EBUSY;
+		goto error;
+	}
+
+	if (ndev->ops->open(ndev)) {
+		rc = -EIO;
+		goto error;
+	}
+
+	if (!rc) {
+		set_bit(NCI_UP, &ndev->flags);
+		atomic_set(&ndev->state, NCI_IDLE);
+	} else {
+		/* Open failed, cleanup */
+		ndev->ops->close(ndev);
+		ndev->flags = 0;
+	}
+
+error:
+	device_unlock(&dev->dev);
+	return rc;
+}
+
 static int nci_sock_release(struct socket *sock)
 {
 	struct sock *sk = sock->sk;
+	struct nfc_nci_sock *nci_sock = nfc_nci_sock(sk);
 
 	pr_debug("sock=%p sk=%p\n", sock, sk);
 
@@ -56,9 +114,9 @@ static int nci_sock_release(struct socket *sock)
 		return 0;
 
 	if (sk->sk_state == NCI_BOUND) {
-//	        nfc_pda_close(nfc_pda_sock(sk)->dev);
-//		nfc_put_device(nfc_pda_sock(sk)->dev);
-//		nfc_pda_sock(sk)->dev = NULL;
+		nci_sock_close(nci_sock->dev);
+		nfc_put_device(nci_sock->dev);
+		nci_sock->dev = NULL;
 
 		nci_sock_unlink(&nci_sk_list, sk);
 	}
@@ -67,6 +125,59 @@ static int nci_sock_release(struct socket *sock)
 	sock_put(sk);
 
 	return 0;
+}
+
+static int nci_sock_bind(struct socket *sock, struct sockaddr *addr, int alen)
+{
+	struct sock *sk = sock->sk;
+	struct sockaddr_nfc_nci nci_addr;
+	struct nfc_nci_sock *nci_sock = nfc_nci_sock(sk);
+	struct nfc_dev *dev;
+	int len, ret = 0;
+
+	if (!addr || addr->sa_family != AF_NFC)
+		return -EINVAL;
+
+	pr_debug("sk %p addr %p family %d\n", sk, addr, addr->sa_family);
+
+	memset(&nci_addr, 0, sizeof(nci_addr));
+	len = min_t(unsigned int, sizeof(nci_addr), alen);
+	memcpy(&nci_addr, addr, len);
+
+	lock_sock(sk);
+
+	if (sk->sk_state != NCI_CLOSED) {
+		ret = -EBADFD;
+		goto error;
+	}
+
+	if (!capable(CAP_NET_ADMIN)) {
+		ret = -EPERM;
+		goto error;
+	}
+
+	dev = nfc_get_device(nci_addr.dev_idx);
+	if (dev == NULL) {
+		ret = -ENODEV;
+		goto error;
+	}
+
+	ret = nci_sock_open(dev);
+	if (ret)
+		goto put_dev;
+
+	nci_sock->dev = dev;
+	nci_sock_link(&nci_sk_list, sk);
+
+	pr_debug("NCI Socket bound to nfc%d\n", nci_addr.dev_idx);
+
+	sk->sk_state = NCI_BOUND;
+
+put_dev:
+	nfc_put_device(dev);
+error:
+	release_sock(sk);
+	return ret;
 }
 
 static struct proto nci_sock_proto = {
@@ -79,7 +190,7 @@ static const struct proto_ops nci_sock_ops = {
 	.family         = PF_NFC,
 	.owner          = THIS_MODULE,
 	.release        = nci_sock_release,
-	.bind           = sock_no_bind,
+	.bind           = nci_sock_bind,
 	.connect        = sock_no_connect,
 	.socketpair     = sock_no_socketpair,
 	.accept         = sock_no_accept,

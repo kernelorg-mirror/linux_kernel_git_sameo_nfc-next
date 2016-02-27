@@ -279,6 +279,11 @@ struct sockaddr_nfc_llcp {
 	size_t service_name_len;
 };
 
+struct sockaddr_nfc_nci {
+	sa_family_t sa_family;
+	__u32 dev_idx;
+};
+
 /* NFC socket protocols */
 #define NFC_SOCKPROTO_RAW	0
 #define NFC_SOCKPROTO_LLCP	1
