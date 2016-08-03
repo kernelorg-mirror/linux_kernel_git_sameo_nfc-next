@@ -87,6 +87,9 @@ static struct nfcsim_link *nfcsim_link_new(void)
 
 static void nfcsim_link_free(struct nfcsim_link *link)
 {
+	if (!link)
+		return;
+
 	dev_kfree_skb(link->skb);
 	kfree(link);
 }
